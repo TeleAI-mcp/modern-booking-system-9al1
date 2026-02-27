@@ -1,0 +1,34 @@
+name: Auto-close issues labeled wontfix
+
+on:
+  issues:
+    types: [labeled, opened]
+
+jobs:
+  close-wontfix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issue if labeled wontfix
+        if: github.event.label.name == 'wontfix' || contains(github.event.issue.labels.*.name, 'wontfix')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+            const hasWontfix = issue.labels.some(label => label.name === 'wontfix');
+            
+            if (hasWontfix && issue.state === 'open') {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed'
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: 'This issue has been automatically closed because it was labeled as `wontfix`.'
+              });
+            }
